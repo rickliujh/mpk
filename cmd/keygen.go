@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bnb-chain/tss-lib/ecdsa/keygen"
-	"github.com/bnb-chain/tss-lib/tss"
+	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
+	"github.com/bnb-chain/tss-lib/v2/tss"
 	"github.com/google/uuid"
 	"github.com/rickliujh/multi-signer/pkg/fileio"
 	"github.com/spf13/cobra"
@@ -74,13 +74,13 @@ to quickly create a Cobra application.`,
 		// curve := tss.Edwards()
 
 		wg := &sync.WaitGroup{}
-		pks := make([]keygen.LocalPartySaveData, len(pids))
+		pks := make([]*keygen.LocalPartySaveData, len(pids))
 		paries := []tss.Party{}
 		for i, p := range sorted {
 			wg.Add(2)
 			params := tss.NewParameters(curve, ctx, p, len(pids), threshold)
 			outCh := make(chan tss.Message)
-			endCh := make(chan keygen.LocalPartySaveData)
+			endCh := make(chan *keygen.LocalPartySaveData)
 			party := keygen.NewLocalParty(params, outCh, endCh) // Omit the last arg to compute the pre-params in round 1
 			paries = append(paries, party)
 			go func(i int) {
