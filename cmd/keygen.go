@@ -4,7 +4,6 @@ Copyright © 2024 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"math/big"
 	"os"
@@ -20,7 +19,6 @@ import (
 
 var (
 	pcount    int
-	threshold int
 	timeout   int64
 	keynames  []string
 	group     string
@@ -121,11 +119,11 @@ to quickly create a Cobra application.`,
 
 		fmt.Println("====public key====")
 		fmt.Println(pks[0].ECDSAPub.ToECDSAPubKey())
-		err = fileio.Save(group, "public", pks[0].ECDSAPub.ToECDSAPubKey())
+		err = fileio.SaveFile(group, "public", pks[0].ECDSAPub.ToECDSAPubKey())
 		fmt.Println("====private keys====")
 		for i, pk := range pks {
 			fmt.Printf("[%d]\n%v\n", i, pk)
-			if err = fileio.Save(group, keynames[i], pk); err != nil {
+			if err = fileio.SavePK(group, keynames[i], pk); err != nil {
 				return err
 			}
 		}
@@ -139,7 +137,6 @@ func init() {
 	keygenCmd.Flags().IntVarP(&pcount, "party-count", "c", 2, "defines the number of parties will be generated")
 	keygenCmd.Flags().IntVarP(&threshold, "threshold", "t", 1, "defines the threshold for signature verification")
 	keygenCmd.Flags().Int64VarP(&timeout, "timeout", "o", 1, "defines the minutes of timeout for preparams")
-	keygenCmd.Flags().StringArrayVarP(&keynames, "key-names", "n", []string{}, "defines the name of keys")
 	keygenCmd.Flags().StringVarP(&group, "group", "g", "default", "the peer group save the keys")
 }
 

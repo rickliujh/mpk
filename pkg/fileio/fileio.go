@@ -7,10 +7,14 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
-const subfix = ".json"
-const rootdir = "/mpk"
+const (
+	subfix  = ".json"
+	rootdir = "/mpk"
+	pkdir   = "keys"
+)
 
 var (
 	cfgdir string
@@ -36,37 +40,42 @@ func LoadGroup() ([]string, error) {
 	return gps, nil
 }
 
-func Load[T any](group string) (map[string]T, error) {
-	fns, err := files(filepath.Join(cfgdir, group))
+func load[T any](path string) (stru *T, err error) {
+	bz, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+	stru = new(T)
+	err = json.Unmarshal(bz, stru)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func LoadFile[T any](group, name string) (stru *T, err error) {
+	return load[T](filepath.Join(cfgdir, group, name+subfix))
+}
+
+func LoadPK[T any](group string) (map[string]*T, error) {
+	dir := filepath.Join(cfgdir, group, pkdir)
+	names, err := files(dir)
 	if err != nil {
 		return nil, err
 	}
-	fs := map[string]T{}
-	for _, fn := range fns {
-		bz, err := os.ReadFile(prepFilePath(group, fn))
+	fs := map[string]*T{}
+	for _, name := range names {
+		f, err := load[T](filepath.Join(dir, name))
 		if err != nil {
 			return nil, err
 		}
-		stru := new(T)
-		err = json.Unmarshal(bz, stru)
-		if err != nil {
-			return nil, err
-		}
-		fs[fn] = *stru
+		fs[strings.Split(name, ".")[0]] = f
 	}
 	return fs, nil
 }
 
 func CreateGroup(group string) error {
-	return preparedir(filepath.Join(cfgdir, group))
-}
-
-func Open(group, name string) (*os.File, error) {
-	f, err := os.Open(prepFilePath(group, name))
-	if err != nil {
-		return nil, err
-	}
-	return f, nil
+	return preparedir(filepath.Join(cfgdir, group, pkdir))
 }
 
 func Close(fs ...*os.File) error {
@@ -79,13 +88,13 @@ func Close(fs ...*os.File) error {
 	return errors.Join(errs...)
 }
 
-func Save[T any](group, name string, data T) error {
+func save[T any](path string, data T) error {
 	bz, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}
 
-	f, err := preparefile(prepFilePath(group, name))
+	f, err := preparefile(path)
 	if err != nil {
 		return err
 	}
@@ -95,6 +104,14 @@ func Save[T any](group, name string, data T) error {
 		return err
 	}
 	return nil
+}
+
+func SavePK[T any](group, name string, data T) error {
+	return save(filepath.Join(cfgdir, group, pkdir, name+subfix), data)
+}
+
+func SaveFile[T any](group, name string, data T) error {
+	return save(filepath.Join(cfgdir, group, name+subfix), data)
 }
 
 // preparefile returns file handler, otherwise it returns err if file exist or dir not exist
@@ -139,5 +156,6 @@ func files(dir string) ([]string, error) {
 }
 
 func prepFilePath(group, name string) string {
-	return filepath.Join(cfgdir, group, name+subfix)
+	trimed := strings.Split(name, ".")[0]
+	return filepath.Join(cfgdir, group, trimed+subfix)
 }
