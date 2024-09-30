@@ -4,19 +4,15 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"math/big"
-	"sync"
+	"os"
 	"time"
 
 	"github.com/bnb-chain/tss-lib/v2/common"
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/signing"
 	"github.com/bnb-chain/tss-lib/v2/tss"
-	"github.com/google/uuid"
+	"github.com/rickliujh/multi-signer/pkg/fileio"
 	"github.com/spf13/cobra"
-)
-
-var (
-	keyname string
 )
 
 // signCmd represents the sign command
@@ -29,18 +25,23 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		pids := make(tss.UnSortedPartyIDs, 0)
-		pcount := 2
-		for i := 0; i < pcount; i++ {
-			id, err := uuid.New().MarshalBinary()
-			if err != nil {
-				fmt.Println(err)
-			}
-			pids = append(pids,
-				tss.NewPartyID(fmt.Sprint(i), fmt.Sprintf("p[%d]", i), big.NewInt(0).SetBytes(id)))
+	RunE: func(cmd *cobra.Command, args []string) (err error) {
+		if len(args) == 0 {
+			return fmt.Errorf("no message provided for signing")
+		}
+		message := args[0]
+		meta, err := fileio.LoadFile[fileio.Meta](group, "meta")
+		if err != nil {
+			return
 		}
 
+		pks, err := fileio.LoadPK[keygen.LocalPartySaveData](group)
+		if err != nil {
+			return
+		}
+
+		threshold := meta.Threshold
+		pids := meta.Peers
 		sorted := tss.SortPartyIDs(pids)
 		ctx := tss.NewPeerContext(sorted)
 
@@ -50,71 +51,23 @@ to quickly create a Cobra application.`,
 		// or use EdDSA
 		// curve := tss.Edwards()
 
-		wg := &sync.WaitGroup{}
-		pks := make([]*keygen.LocalPartySaveData, len(pids))
-		paries := []tss.Party{}
-		for i, p := range pids {
-			wg.Add(2)
-			params := tss.NewParameters(curve, ctx, p, len(pids), threshold)
-			outCh := make(chan tss.Message)
-			endCh := make(chan *keygen.LocalPartySaveData)
-			party := keygen.NewLocalParty(params, outCh, endCh) // Omit the last arg to compute the pre-params in round 1
-			paries = append(paries, party)
-			go func(i int) {
-				defer wg.Done()
-				for {
-					select {
-					case msg := <-outCh:
-						for _, p := range paries {
-							if p.PartyID().Index == msg.GetFrom().Index {
-								continue
-							}
-							go func() {
-								if err := SharedPartyUpdater(p, msg); err != nil {
-									fmt.Println(err)
-								}
-							}()
-						}
-					case data := <-endCh:
-						pks[i] = data
-						return
-					case <-time.Tick(time.Minute):
-						fmt.Printf("%v runing state %v\n", party.PartyID(), party.Running())
-					case <-time.After(time.Duration(timeout) * time.Minute):
-						fmt.Printf("goroutine[%d]	timeout\n", i)
-						return
-					}
-				}
-			}(i)
-			go func() {
-				defer wg.Done()
-				err := party.Start()
-				if err != nil {
-					fmt.Println(err)
-					return
-				}
-			}()
-		}
-
-		wg.Wait()
-
-		// signing
-		threshold = 1
-		timeout = 2
 		ended := 0
-		message := big.NewInt(0).SetBytes([]byte("hello world!"))
+		msg := big.NewInt(0).SetBytes([]byte(message))
 		outCh := make(chan tss.Message, len(pids))
 		endCh := make(chan *common.SignatureData, len(pids))
-		signps := make([]tss.Party, len(pids))
+
+		parties := make(map[string]tss.Party)
 		var signatureData *common.SignatureData
-		for i, key := range pks {
+
+		for i, id := range pids {
+			pk := pks[id.GetMoniker()]
 			params := tss.NewParameters(curve, ctx, pids[i], len(pids), threshold)
-			party := signing.NewLocalParty(message, params, *key, outCh, endCh)
-			signps[i] = party
+			party := signing.NewLocalParty(msg, params, *pk, outCh, endCh)
+			parties[id.GetMoniker()] = party
 			go func() {
 				err := party.Start()
 				if err != nil {
-					fmt.Println(err)
+					fmt.Fprintln(os.Stderr, err)
 				}
 			}()
 		}
@@ -128,11 +81,11 @@ to quickly create a Cobra application.`,
 		for {
 			select {
 			case msg := <-outCh:
-				dest := msg.GetTo()
-				if dest == nil {
-					go func() {
-						for _, p := range signps {
-							if p.PartyID().Index == msg.GetFrom().Index {
+				go func() {
+					dest := msg.GetTo()
+					if dest == nil {
+						for k, p := range parties {
+							if k == msg.GetFrom().GetMoniker() {
 								continue
 							}
 							fmt.Println("no dest")
@@ -140,27 +93,25 @@ to quickly create a Cobra application.`,
 								fmt.Println(err)
 							}
 						}
-					}()
-				} else {
-					go func() {
+					} else {
 						fmt.Println("dest")
-						if err := SharedPartyUpdater(signps[dest[0].Index], msg); err != nil {
+						if err := SharedPartyUpdater(parties[dest[0].GetMoniker()], msg); err != nil {
 							fmt.Println(err)
 						}
-					}()
-				}
+					}
+				}()
 			case data := <-endCh:
 				ended++
-				if ended == len(signps) {
+				if ended >= len(parties) {
 					fmt.Println("test")
 					fmt.Println(data)
 
 					signatureData = data
 					break signing
 				}
-			case <-time.After(30 * time.Second):
-				fmt.Printf("signing timeout\n")
+			case <-time.After(time.Duration(timeout) * time.Minute):
 				fmt.Printf("%d, %d, %d", len(outCh), len(endCh), 1)
+				err = fmt.Errorf("signing timeout\n")
 				break signing
 				// case <-time.Tick(10 * time.Second):
 				// 	for _, p := range paries {
@@ -169,6 +120,8 @@ to quickly create a Cobra application.`,
 			}
 		}
 
+		fmt.Println(signatureData)
+
 		// verify
 		// hash := sha256.Sum256([]byte(message.Bytes()))
 		for i, pk := range pks {
@@ -176,19 +129,26 @@ to quickly create a Cobra application.`,
 			fmt.Println(pub)
 			if ok := ecdsa.Verify(
 				pub,
-				message.Bytes(), big.NewInt(0).SetBytes(signatureData.R),
+				msg.Bytes(), big.NewInt(0).SetBytes(signatureData.R),
 				big.NewInt(0).SetBytes(signatureData.S),
 			); !ok {
-				fmt.Printf("pk[%d] failed to verify", i)
+				return fmt.Errorf("pk[%d] failed to verify", i)
 			}
 		}
 
 		fmt.Printf("verified")
+		return
 	},
 }
+
+var (
+	keyname string
+)
 
 func init() {
 	rootCmd.AddCommand(signCmd)
 
-	keygenCmd.Flags().StringVarP(&keyname, "key", "k", "", "specify the name of key signing the message, default using the first local key")
+	signCmd.Flags().StringVarP(&group, "group", "g", "default", "the peer group save the keys")
+	signCmd.Flags().Int64VarP(&timeout, "timeout", "o", 1, "defines the minutes of timeout for preparams")
+	// signCmd.Flags().StringVarP(&output, "output", "f", "signature.json", "the peer group save the keys")
 }

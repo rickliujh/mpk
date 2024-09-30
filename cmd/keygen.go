@@ -4,6 +4,7 @@ Copyright © 2024 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"sync"
@@ -58,7 +59,7 @@ to quickly create a Cobra application.`,
 		// curve := tss.Edwards()
 
 		wg := &sync.WaitGroup{}
-		pks := make([]*keygen.LocalPartySaveData, len(pids))
+		pks := make(map[string]*keygen.LocalPartySaveData)
 		paries := []tss.Party{}
 		for i, p := range sorted {
 			wg.Add(2)
@@ -83,7 +84,7 @@ to quickly create a Cobra application.`,
 							}()
 						}
 					case data := <-endCh:
-						pks[i] = data
+						pks[sorted[i].GetMoniker()] = data
 						return
 					case <-time.After(time.Duration(timeout) * time.Minute):
 						fmt.Printf("goroutine[%d]	keygen timeout\n", i)
@@ -104,12 +105,13 @@ to quickly create a Cobra application.`,
 		wg.Wait()
 
 		fmt.Println("====public key====")
-		fmt.Println(pks[0].ECDSAPub.ToECDSAPubKey())
-		err = fileio.SaveFile(group, "public", pks[0].ECDSAPub.ToECDSAPubKey())
+		tmp := pks[sorted[0].GetMoniker()]
+		fmt.Println(tmp.ECDSAPub.ToECDSAPubKey())
+		err = fileio.SaveFile(group, "public", tmp.ECDSAPub.ToECDSAPubKey())
 		fmt.Println("====private keys====")
-		for i, pk := range pks {
-			fmt.Printf("[%d]\n%v\n", i, pk)
-			if err = fileio.SavePK(group, pids[i].GetMoniker(), pk); err != nil {
+		for k, pk := range pks {
+			fmt.Printf("[%s]\n%v\n", k, pk)
+			if err = fileio.SavePK(group, k, pk); err != nil {
 				return err
 			}
 		}
@@ -125,8 +127,8 @@ func init() {
 }
 
 func SharedPartyUpdater(party tss.Party, msg tss.Message) *tss.Error {
-	// s, err := json.Marshal(msg)
-	// fmt.Printf("%s, %v, %s\n", s, err, party.PartyID().GetMoniker())
+	s, err := json.Marshal(msg)
+	fmt.Printf("%s, %v, %s\n", s, err, party.PartyID().GetMoniker())
 
 	// do not send a message from this party back to itself
 	if party.PartyID() == msg.GetFrom() {
