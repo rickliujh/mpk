@@ -11,7 +11,7 @@ import (
 // groupCreateCmd represents the create command
 var groupCreateCmd = &cobra.Command{
 	Use:   "create",
-	Short: "A brief description of your command",
+	Short: "Creating peer groups",
 	Long: `A longer description that spans multiple lines and likely contains examples
 and usage of using your command. For example:
 

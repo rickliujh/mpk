@@ -15,7 +15,7 @@ import (
 // verifyCmd represents the verify command
 var verifyCmd = &cobra.Command{
 	Use:   "verify",
-	Short: "A brief description of your command",
+	Short: "Verifying the signature",
 	Long: `A longer description that spans multiple lines and likely contains examples
 and usage of using your command. For example:
 

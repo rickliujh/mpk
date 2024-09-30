@@ -24,7 +24,7 @@ var (
 // keyCmd represents the key command
 var keygenCmd = &cobra.Command{
 	Use:   "keygen",
-	Short: "A brief description of your command",
+	Short: "Generating the private keys for peer group",
 	Long: `A longer description that spans multiple lines and likely contains examples
 and usage of using your command. For example:
 

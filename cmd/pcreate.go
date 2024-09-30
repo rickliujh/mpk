@@ -16,7 +16,7 @@ import (
 // peerCreateCmd represents the pcreate command
 var peerCreateCmd = &cobra.Command{
 	Use:   "create",
-	Short: "A brief description of your command",
+	Short: "Creating peers in the group",
 	Long: `A longer description that spans multiple lines and likely contains examples
 and usage of using your command. For example:
 

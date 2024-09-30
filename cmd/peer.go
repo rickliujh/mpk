@@ -10,7 +10,7 @@ import (
 // peerCmd represents the peer command
 var peerCmd = &cobra.Command{
 	Use:   "peer",
-	Short: "A brief description of your command",
+	Short: "Peer is the party participating threshold signing",
 	Long: `A longer description that spans multiple lines and likely contains examples
 and usage of using your command. For example:
 

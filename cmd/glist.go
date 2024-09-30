@@ -13,7 +13,7 @@ import (
 // groupListCmd represents the list command
 var groupListCmd = &cobra.Command{
 	Use:   "list",
-	Short: "A brief description of your command",
+	Short: "List existing peer groups",
 	Long: `A longer description that spans multiple lines and likely contains examples
 and usage of using your command. For example:
 

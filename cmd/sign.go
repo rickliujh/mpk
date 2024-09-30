@@ -16,7 +16,7 @@ import (
 // signCmd represents the sign command
 var signCmd = &cobra.Command{
 	Use:   "sign",
-	Short: "A brief description of your command",
+	Short: "Signing a message as peer group",
 	Long: `A longer description that spans multiple lines and likely contains examples
 and usage of using your command. For example:
 
