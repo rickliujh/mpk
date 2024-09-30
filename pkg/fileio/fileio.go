@@ -8,6 +8,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/bnb-chain/tss-lib/v2/common"
+	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 )
 
 const (
@@ -53,19 +56,25 @@ func load[T any](path string) (stru *T, err error) {
 	return
 }
 
-func LoadFile[T any](group, name string) (stru *T, err error) {
-	return load[T](filepath.Join(cfgdir, group, name+subfix))
+func LoadSig(path string) (stru *common.SignatureData, err error) {
+	return load[common.SignatureData](path)
 }
 
-func LoadPK[T any](group string) (map[string]*T, error) {
+func LoadFile[T VaildFile](group, name string) (stru T, err error) {
+	v, err := load[T](filepath.Join(cfgdir, group, name+subfix))
+	stru = *v
+	return
+}
+
+func LoadPK(group string) (map[string]*keygen.LocalPartySaveData, error) {
 	dir := filepath.Join(cfgdir, group, pkdir)
 	names, err := files(dir)
 	if err != nil {
 		return nil, err
 	}
-	fs := map[string]*T{}
+	fs := map[string]*keygen.LocalPartySaveData{}
 	for _, name := range names {
-		f, err := load[T](filepath.Join(dir, name))
+		f, err := load[keygen.LocalPartySaveData](filepath.Join(dir, name))
 		if err != nil {
 			return nil, err
 		}
@@ -106,7 +115,11 @@ func save[T any](path string, data T) error {
 	return nil
 }
 
-func SavePK[T any](group, name string, data T) error {
+func SaveSig(path string, data *common.SignatureData) error {
+	return save(path+subfix, data)
+}
+
+func SavePK(group, name string, data *keygen.LocalPartySaveData) error {
 	dir := filepath.Join(cfgdir, group, pkdir)
 	err := preparedir(dir)
 	if err != nil {
@@ -115,7 +128,7 @@ func SavePK[T any](group, name string, data T) error {
 	return save(filepath.Join(dir, name+subfix), data)
 }
 
-func SaveFile[T any](group, name string, data T) error {
+func SaveFile[T VaildFile](group, name string, data T) error {
 	return save(filepath.Join(cfgdir, group, name+subfix), data)
 }
 

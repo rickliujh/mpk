@@ -1,14 +1,12 @@
 package cmd
 
 import (
-	"crypto/ecdsa"
 	"fmt"
 	"math/big"
 	"os"
 	"time"
 
 	"github.com/bnb-chain/tss-lib/v2/common"
-	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/signing"
 	"github.com/bnb-chain/tss-lib/v2/tss"
 	"github.com/rickliujh/multi-signer/pkg/fileio"
@@ -29,13 +27,14 @@ to quickly create a Cobra application.`,
 		if len(args) == 0 {
 			return fmt.Errorf("no message provided for signing")
 		}
+
 		message := args[0]
-		meta, err := fileio.LoadFile[fileio.Meta](group, "meta")
+		meta, err := fileio.LoadFile[*fileio.Meta](group, "meta")
 		if err != nil {
 			return
 		}
 
-		pks, err := fileio.LoadPK[keygen.LocalPartySaveData](group)
+		pks, err := fileio.LoadPK(group)
 		if err != nil {
 			return
 		}
@@ -120,29 +119,21 @@ to quickly create a Cobra application.`,
 			}
 		}
 
-		fmt.Println(signatureData)
-
-		// verify
-		// hash := sha256.Sum256([]byte(message.Bytes()))
-		for i, pk := range pks {
-			pub := pk.ECDSAPub.ToECDSAPubKey()
-			fmt.Println(pub)
-			if ok := ecdsa.Verify(
-				pub,
-				msg.Bytes(), big.NewInt(0).SetBytes(signatureData.R),
-				big.NewInt(0).SetBytes(signatureData.S),
-			); !ok {
-				return fmt.Errorf("pk[%d] failed to verify", i)
+		if output != "" {
+			err = fileio.SaveSig(output, signatureData)
+			if err != nil {
+				return
 			}
 		}
 
-		fmt.Printf("verified")
+		fmt.Printf("====signature====\n%v\n", signatureData)
 		return
 	},
 }
 
 var (
 	keyname string
+	output  string
 )
 
 func init() {
@@ -150,5 +141,5 @@ func init() {
 
 	signCmd.Flags().StringVarP(&group, "group", "g", "default", "the peer group save the keys")
 	signCmd.Flags().Int64VarP(&timeout, "timeout", "o", 1, "defines the minutes of timeout for preparams")
-	// signCmd.Flags().StringVarP(&output, "output", "f", "signature.json", "the peer group save the keys")
+	signCmd.Flags().StringVarP(&output, "output", "f", "signature.json", "file path for output of signature")
 }

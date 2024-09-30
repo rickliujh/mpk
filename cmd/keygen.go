@@ -38,7 +38,7 @@ to quickly create a Cobra application.`,
 		// 	return
 		// }
 
-		meta, err := fileio.LoadFile[fileio.Meta](group, "meta")
+		meta, err := fileio.LoadFile[*fileio.Meta](group, "meta")
 		if err != nil {
 			return
 		}
