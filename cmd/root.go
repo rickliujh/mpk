@@ -14,14 +14,13 @@ import (
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "multi-signer",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Use:   "mpk",
+	Short: "mpk is a multi party threshold signature CLI",
+	Long: `mpk is a multi party threshold signature CLI.
+You can use it for parity manageement, keygen, signing, and signature verification.
+It's open source and you can find it here: https://github.com/rickliujh/mpk/
+It use bnb-chain/tss-lib under the hood for signature schema.
+	`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	// Run: func(cmd *cobra.Command, args []string) { },

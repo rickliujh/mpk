@@ -6,7 +6,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/rickliujh/multi-signer/pkg/fileio"
+	"github.com/rickliujh/mpk/pkg/fileio"
 	"github.com/spf13/cobra"
 )
 

@@ -1,4 +1,4 @@
-module github.com/rickliujh/multi-signer
+module github.com/rickliujh/mpk
 
 go 1.22.3
 

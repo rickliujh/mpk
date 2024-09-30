@@ -9,7 +9,7 @@ import (
 	"github.com/bnb-chain/tss-lib/v2/common"
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/signing"
 	"github.com/bnb-chain/tss-lib/v2/tss"
-	"github.com/rickliujh/multi-signer/pkg/fileio"
+	"github.com/rickliujh/mpk/pkg/fileio"
 	"github.com/spf13/cobra"
 )
 
