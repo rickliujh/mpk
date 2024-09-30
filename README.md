@@ -79,5 +79,12 @@ mpk verify -g mygroup -f ./sig.json "hello world!"
 
 You can always use -h for any command and sub command for available actions.
 
+### Vault path
+
+The keys are stored at `~./.confg/mpk`
+
+> [!WARNING]
+> The keys encryption is not supported at this point.
+
 ### Underlay
 [bnb-chain/tss-lib Threshold Signature Scheme, for ECDSA and EDDSA](https://github.com/bnb-chain/tss-lib/tree/master)
