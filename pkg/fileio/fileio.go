@@ -107,7 +107,12 @@ func save[T any](path string, data T) error {
 }
 
 func SavePK[T any](group, name string, data T) error {
-	return save(filepath.Join(cfgdir, group, pkdir, name+subfix), data)
+	dir := filepath.Join(cfgdir, group, pkdir)
+	err := preparedir(dir)
+	if err != nil {
+		return err
+	}
+	return save(filepath.Join(dir, name+subfix), data)
 }
 
 func SaveFile[T any](group, name string, data T) error {

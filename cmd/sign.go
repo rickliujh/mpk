@@ -31,7 +31,7 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		pids := make(tss.UnSortedPartyIDs, 0)
-
+		pcount := 2
 		for i := 0; i < pcount; i++ {
 			id, err := uuid.New().MarshalBinary()
 			if err != nil {

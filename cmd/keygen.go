@@ -5,23 +5,19 @@ package cmd
 
 import (
 	"fmt"
-	"math/big"
 	"os"
 	"sync"
 	"time"
 
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 	"github.com/bnb-chain/tss-lib/v2/tss"
-	"github.com/google/uuid"
 	"github.com/rickliujh/multi-signer/pkg/fileio"
 	"github.com/spf13/cobra"
 )
 
 var (
-	pcount    int
-	timeout   int64
-	keynames  []string
-	group     string
+	timeout int64
+	group   string
 )
 
 // keyCmd represents the key command
@@ -41,27 +37,17 @@ to quickly create a Cobra application.`,
 		// 	return
 		// }
 
-		if len(keynames) == 0 {
-			for i := range pcount {
-				keynames = append(keynames, fmt.Sprint(i))
-			}
+		meta, err := fileio.LoadFile[fileio.Meta](group, "meta")
+		if err != nil {
+			return
 		}
 
-		if len(keynames) != pcount {
-			return fmt.Errorf("the numbers of key names provided is not equal to party count")
+		pids := meta.Peers
+		if len(pids) == 0 {
+			return fmt.Errorf("no peers in the group, create peers first")
 		}
 
-		pids := make(tss.UnSortedPartyIDs, 0)
-
-		for i := 0; i < pcount; i++ {
-			id, err := uuid.New().MarshalBinary()
-			if err != nil {
-				return err
-			}
-			pids = append(pids,
-				tss.NewPartyID(fmt.Sprint(i), fmt.Sprintf("p[%d]", i), big.NewInt(0).SetBytes(id)))
-		}
-
+		threshold := meta.Threshold
 		sorted := tss.SortPartyIDs(pids)
 		ctx := tss.NewPeerContext(sorted)
 
@@ -123,7 +109,7 @@ to quickly create a Cobra application.`,
 		fmt.Println("====private keys====")
 		for i, pk := range pks {
 			fmt.Printf("[%d]\n%v\n", i, pk)
-			if err = fileio.SavePK(group, keynames[i], pk); err != nil {
+			if err = fileio.SavePK(group, pids[i].GetMoniker(), pk); err != nil {
 				return err
 			}
 		}
@@ -134,8 +120,6 @@ to quickly create a Cobra application.`,
 func init() {
 	rootCmd.AddCommand(keygenCmd)
 
-	keygenCmd.Flags().IntVarP(&pcount, "party-count", "c", 2, "defines the number of parties will be generated")
-	keygenCmd.Flags().IntVarP(&threshold, "threshold", "t", 1, "defines the threshold for signature verification")
 	keygenCmd.Flags().Int64VarP(&timeout, "timeout", "o", 1, "defines the minutes of timeout for preparams")
 	keygenCmd.Flags().StringVarP(&group, "group", "g", "default", "the peer group save the keys")
 }
