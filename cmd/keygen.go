@@ -7,12 +7,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"os"
 	"sync"
 	"time"
 
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 	"github.com/bnb-chain/tss-lib/v2/tss"
 	"github.com/google/uuid"
+	"github.com/rickliujh/multi-signer/pkg/fileio"
 	"github.com/spf13/cobra"
 )
 
@@ -21,6 +23,7 @@ var (
 	threshold int
 	timeout   int64
 	keynames  []string
+	group     string
 )
 
 // keyCmd represents the key command
@@ -33,7 +36,7 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		// preParams, err := keygen.GeneratePreParams(time.Duration(timeout) * time.Minute)
 		// if err != nil {
 		// 	fmt.Println(err, preParams)
@@ -47,9 +50,7 @@ to quickly create a Cobra application.`,
 		}
 
 		if len(keynames) != pcount {
-			fmt.Println(len(keynames), pcount)
-			fmt.Println("the numbers of key names provided is not equal to party count")
-			return
+			return fmt.Errorf("the numbers of key names provided is not equal to party count")
 		}
 
 		pids := make(tss.UnSortedPartyIDs, 0)
@@ -57,7 +58,7 @@ to quickly create a Cobra application.`,
 		for i := 0; i < pcount; i++ {
 			id, err := uuid.New().MarshalBinary()
 			if err != nil {
-				fmt.Println(err)
+				return err
 			}
 			pids = append(pids,
 				tss.NewPartyID(fmt.Sprint(i), fmt.Sprintf("p[%d]", i), big.NewInt(0).SetBytes(id)))
@@ -93,17 +94,15 @@ to quickly create a Cobra application.`,
 							}
 							go func() {
 								if err := SharedPartyUpdater(p, msg); err != nil {
-									fmt.Println(err)
+									fmt.Fprintln(os.Stderr, err)
 								}
 							}()
 						}
 					case data := <-endCh:
 						pks[i] = data
 						return
-					case <-time.Tick(time.Minute):
-						fmt.Printf("%v runing state %v\n", party.PartyID(), party.Running())
 					case <-time.After(time.Duration(timeout) * time.Minute):
-						fmt.Printf("goroutine[%d]	timeout\n", i)
+						fmt.Printf("goroutine[%d]	keygen timeout\n", i)
 						return
 					}
 				}
@@ -112,7 +111,7 @@ to quickly create a Cobra application.`,
 				defer wg.Done()
 				err := party.Start()
 				if err != nil {
-					fmt.Println(err)
+					fmt.Fprintln(os.Stderr, err)
 					return
 				}
 			}()
@@ -120,13 +119,17 @@ to quickly create a Cobra application.`,
 
 		wg.Wait()
 
+		fmt.Println("====public key====")
+		fmt.Println(pks[0].ECDSAPub.ToECDSAPubKey())
+		err = fileio.Save(group, "public", pks[0].ECDSAPub.ToECDSAPubKey())
+		fmt.Println("====private keys====")
 		for i, pk := range pks {
-			// if err := fileio.Save(keynames[i], pk); err != nil {
-			// 	fmt.Println(err)
-			// 	return
-			// }
 			fmt.Printf("[%d]\n%v\n", i, pk)
+			if err = fileio.Save(group, keynames[i], pk); err != nil {
+				return err
+			}
 		}
+		return
 	},
 }
 
@@ -137,11 +140,13 @@ func init() {
 	keygenCmd.Flags().IntVarP(&threshold, "threshold", "t", 1, "defines the threshold for signature verification")
 	keygenCmd.Flags().Int64VarP(&timeout, "timeout", "o", 1, "defines the minutes of timeout for preparams")
 	keygenCmd.Flags().StringArrayVarP(&keynames, "key-names", "n", []string{}, "defines the name of keys")
+	keygenCmd.Flags().StringVarP(&group, "group", "g", "default", "the peer group save the keys")
 }
 
 func SharedPartyUpdater(party tss.Party, msg tss.Message) *tss.Error {
-	s, err := json.Marshal(msg)
-	fmt.Printf("%s, %v, %s\n", s, err, party.PartyID().GetMoniker())
+	// s, err := json.Marshal(msg)
+	// fmt.Printf("%s, %v, %s\n", s, err, party.PartyID().GetMoniker())
+
 	// do not send a message from this party back to itself
 	if party.PartyID() == msg.GetFrom() {
 		fmt.Println("skip")
