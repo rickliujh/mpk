@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"crypto/ecdsa"
 	"fmt"
 	"math/big"
 	"sync"
@@ -100,10 +101,12 @@ to quickly create a Cobra application.`,
 		// signing
 		threshold = 1
 		timeout = 2
+		ended := 0
 		message := big.NewInt(0).SetBytes([]byte("hello world!"))
 		outCh := make(chan tss.Message, len(pids))
 		endCh := make(chan *common.SignatureData, len(pids))
 		signps := make([]tss.Party, len(pids))
+		var signatureData *common.SignatureData
 		for i, key := range pks {
 			params := tss.NewParameters(curve, ctx, pids[i], len(pids), threshold)
 			party := signing.NewLocalParty(message, params, *key, outCh, endCh)
@@ -121,7 +124,7 @@ to quickly create a Cobra application.`,
 		// 		fmt.Println(&data)
 		// 	}
 		// }()
-
+	signing:
 		for {
 			select {
 			case msg := <-outCh:
@@ -147,19 +150,40 @@ to quickly create a Cobra application.`,
 					}()
 				}
 			case data := <-endCh:
-				fmt.Println("test")
-				fmt.Println(data)
-				return
+				ended++
+				if ended == len(signps) {
+					fmt.Println("test")
+					fmt.Println(data)
+
+					signatureData = data
+					break signing
+				}
 			case <-time.After(30 * time.Second):
 				fmt.Printf("signing timeout\n")
 				fmt.Printf("%d, %d, %d", len(outCh), len(endCh), 1)
-				return
+				break signing
 				// case <-time.Tick(10 * time.Second):
 				// 	for _, p := range paries {
 				// 		fmt.Printf("%v runing state %v\n", p.PartyID().Id, p.Running())
 				// 	}
 			}
 		}
+
+		// verify
+		// hash := sha256.Sum256([]byte(message.Bytes()))
+		for i, pk := range pks {
+			pub := pk.ECDSAPub.ToECDSAPubKey()
+			fmt.Println(pub)
+			if ok := ecdsa.Verify(
+				pub,
+				message.Bytes(), big.NewInt(0).SetBytes(signatureData.R),
+				big.NewInt(0).SetBytes(signatureData.S),
+			); !ok {
+				fmt.Printf("pk[%d] failed to verify", i)
+			}
+		}
+
+		fmt.Printf("verified")
 	},
 }
 
