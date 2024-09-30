@@ -1,47 +1,38 @@
-MODULE = github.com/rickliujh/multi-signer
-PACKAGES = $(shell go list ./... | grep -v '/vendor/')
+MODULE = github.com/rickliujh/mpk
+APP_NAME := mpk
+# Directory where the binary will be placed
+BUILD_DIR := ./build
+GO_FILES := $(shell find . -name '*.go' -not -path "./vendor/*") # Find all Go files except in vendor
 
-all: protob test
+# Default target
+all: clean build
 
-########################################
-### Protocol Buffers
+# Ensure build directory exists, then build the Go binary
+build: $(BUILD_DIR)/$(APP_NAME)
 
-protob:
-	@echo "--> Building Protocol Buffers"
-	@for protocol in message signature ecdsa-keygen ecdsa-signing ecdsa-resharing eddsa-keygen eddsa-signing eddsa-resharing; do \
-		echo "Generating $$protocol.pb.go" ; \
-		protoc --go_out=. ./protob/$$protocol.proto ; \
-	done
+$(BUILD_DIR)/$(APP_NAME): $(GO_FILES)
+	@echo "Building binary..."
+	@mkdir -p $(BUILD_DIR)
+	@go build -v -o $(BUILD_DIR)/$(APP_NAME)
+	@echo "Binary built at $(BUILD_DIR)/$(APP_NAME)"
 
-build: protob
-	go fmt ./...
+# Clean the build artifacts
+clean:
+	@echo "Cleaning build directory..."
+	@rm -rf $(BUILD_DIR)
+	@echo "Clean complete."
 
-########################################
-### Testing
+# Tidy Go modules (optional)
+tidy:
+	@go mod tidy
 
-test_unit:
-	@echo "--> Running Unit Tests"
-	@echo "!!! WARNING: This will take a long time :)"
-	go clean -testcache
-	go test -timeout 60m $(PACKAGES)
+# Format the Go code (optional)
+fmt:
+	@go fmt ./...
 
-test_unit_race:
-	@echo "--> Running Unit Tests (with Race Detection)"
-	@echo "!!! WARNING: This will take a long time :)"
-	go clean -testcache
-	go test -timeout 60m -race $(PACKAGES)
+# Run the application (optional)
+run:
+	@go run .
 
-test:
-	make test_unit
-
-########################################
-### Pre Commit
-
-pre_commit: build test
-
-########################################
-
-# To avoid unintended conflicts with file names, always add to .PHONY
-# # unless there is a reason not to.
-# # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: protob build test_unit test_unit_race test
+# Phony targets to avoid name collisions
+.PHONY: all build clean tidy fmt run
