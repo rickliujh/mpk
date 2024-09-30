@@ -10,28 +10,40 @@ import (
 )
 
 const subfix = ".json"
+const rootdir = "/mpk"
 
 var (
 	cfgdir string
 )
 
 func init() {
-	usercfg, _ := os.UserConfigDir()
-	cfgdir = usercfg + "/multi-signer/"
+	usercfg, err := os.UserConfigDir()
+	if err != nil {
+		panic(err)
+	}
+	cfgdir = usercfg + rootdir
 	if err := preparedir(cfgdir); err != nil {
 		panic(err)
 	}
 
 }
 
-func Load[T any]() (map[string]T, error) {
-	fns, err := files(cfgdir)
+func LoadGroup() ([]string, error) {
+	gps, err := files(cfgdir)
+	if err != nil {
+		return nil, err
+	}
+	return gps, nil
+}
+
+func Load[T any](group string) (map[string]T, error) {
+	fns, err := files(filepath.Join(cfgdir, group))
 	if err != nil {
 		return nil, err
 	}
 	fs := map[string]T{}
 	for _, fn := range fns {
-		bz, err := os.ReadFile(prepFilePath(fn))
+		bz, err := os.ReadFile(prepFilePath(group, fn))
 		if err != nil {
 			return nil, err
 		}
@@ -45,8 +57,12 @@ func Load[T any]() (map[string]T, error) {
 	return fs, nil
 }
 
-func Open(name string) (*os.File, error) {
-	f, err := os.Open(prepFilePath(name))
+func CreateGroup(group string) error {
+	return preparedir(filepath.Join(cfgdir, group))
+}
+
+func Open(group, name string) (*os.File, error) {
+	f, err := os.Open(prepFilePath(group, name))
 	if err != nil {
 		return nil, err
 	}
@@ -63,13 +79,13 @@ func Close(fs ...*os.File) error {
 	return errors.Join(errs...)
 }
 
-func Save[T any](name string, data T) error {
+func Save[T any](group, name string, data T) error {
 	bz, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}
 
-	f, err := preparefile(prepFilePath(name))
+	f, err := preparefile(prepFilePath(group, name))
 	if err != nil {
 		return err
 	}
@@ -81,8 +97,7 @@ func Save[T any](name string, data T) error {
 	return nil
 }
 
-// preparedir checks the file, returns file and err if exist
-// creates the dir and file otherwise
+// preparefile returns file handler, otherwise it returns err if file exist or dir not exist
 func preparefile(path string) (*os.File, error) {
 	f, err := os.Create(path)
 	if err != nil {
@@ -92,11 +107,13 @@ func preparefile(path string) (*os.File, error) {
 	return f, nil
 }
 
+// preparedir checks dir, returns err if exist
+// creates the dir otherwise
 func preparedir(dir string) error {
 	_, err := os.Stat(dir)
 
 	if os.IsNotExist(err) {
-		if err := os.MkdirAll(cfgdir, 0700); err != nil {
+		if err = os.MkdirAll(dir, 0700); err != nil {
 			return err
 		}
 	}
@@ -104,6 +121,7 @@ func preparedir(dir string) error {
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -117,9 +135,9 @@ func files(dir string) ([]string, error) {
 		return nil, err
 	}
 
-	return farr, nil
+	return farr[1:], nil
 }
 
-func prepFilePath(name string) string {
-	return cfgdir + name + subfix
+func prepFilePath(group, name string) string {
+	return filepath.Join(cfgdir, group, name+subfix)
 }

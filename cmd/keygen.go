@@ -13,7 +13,6 @@ import (
 	"github.com/bnb-chain/tss-lib/v2/ecdsa/keygen"
 	"github.com/bnb-chain/tss-lib/v2/tss"
 	"github.com/google/uuid"
-	"github.com/rickliujh/multi-signer/pkg/fileio"
 	"github.com/spf13/cobra"
 )
 
@@ -122,10 +121,10 @@ to quickly create a Cobra application.`,
 		wg.Wait()
 
 		for i, pk := range pks {
-			if err := fileio.Save(keynames[i], pk); err != nil {
-				fmt.Println(err)
-				return
-			}
+			// if err := fileio.Save(keynames[i], pk); err != nil {
+			// 	fmt.Println(err)
+			// 	return
+			// }
 			fmt.Printf("[%d]\n%v\n", i, pk)
 		}
 	},
