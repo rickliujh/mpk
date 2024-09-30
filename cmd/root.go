@@ -17,7 +17,7 @@ var rootCmd = &cobra.Command{
 	Use:   "mpk",
 	Short: "mpk is a multi party threshold signature CLI",
 	Long: `mpk is a multi party threshold signature CLI.
-You can use it for parity manageement, keygen, signing, and signature verification.
+You can use it for parity management, keygen, signing, and signature verification.
 It's open source and you can find it here: https://github.com/rickliujh/mpk/
 It use bnb-chain/tss-lib under the hood for signature schema.
 	`,
