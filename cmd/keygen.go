@@ -4,7 +4,6 @@ Copyright © 2024 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"sync"
@@ -127,8 +126,8 @@ func init() {
 }
 
 func SharedPartyUpdater(party tss.Party, msg tss.Message) *tss.Error {
-	s, err := json.Marshal(msg)
-	fmt.Printf("%s, %v, %s\n", s, err, party.PartyID().GetMoniker())
+	// s, err := json.Marshal(msg)
+	// fmt.Printf("%s, %v, %s\n", s, err, party.PartyID().GetMoniker())
 
 	// do not send a message from this party back to itself
 	if party.PartyID() == msg.GetFrom() {

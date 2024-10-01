@@ -87,13 +87,11 @@ to quickly create a Cobra application.`,
 							if k == msg.GetFrom().GetMoniker() {
 								continue
 							}
-							fmt.Println("no dest")
 							if err := SharedPartyUpdater(p, msg); err != nil {
 								fmt.Println(err)
 							}
 						}
 					} else {
-						fmt.Println("dest")
 						if err := SharedPartyUpdater(parties[dest[0].GetMoniker()], msg); err != nil {
 							fmt.Println(err)
 						}
@@ -102,14 +100,10 @@ to quickly create a Cobra application.`,
 			case data := <-endCh:
 				ended++
 				if ended >= len(parties) {
-					fmt.Println("test")
-					fmt.Println(data)
-
 					signatureData = data
 					break signing
 				}
 			case <-time.After(time.Duration(timeout) * time.Minute):
-				fmt.Printf("%d, %d, %d", len(outCh), len(endCh), 1)
 				err = fmt.Errorf("signing timeout\n")
 				break signing
 				// case <-time.Tick(10 * time.Second):

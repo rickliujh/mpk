@@ -116,7 +116,7 @@ func save[T any](path string, data T) error {
 }
 
 func SaveSig(path string, data *common.SignatureData) error {
-	return save(path+subfix, data)
+	return save(path, data)
 }
 
 func SavePK(group, name string, data *keygen.LocalPartySaveData) error {

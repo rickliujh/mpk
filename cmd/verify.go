@@ -54,7 +54,7 @@ to quickly create a Cobra application.`,
 			}
 		}
 
-		fmt.Printf("verified")
+		fmt.Println("verified")
 		return
 	},
 }
